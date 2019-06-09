@@ -8,8 +8,9 @@ cache:
 go:
   - "1.12"
 script:
-  - "make test"
-  - "make build"
+  - "go test ./src"
+  - "cd ./src && go build -o ./../build/bash_im_bot"
 env:
   - GO111MODULE=on
-install: true
+install: 
+  - export GOPATH="$GOPATH:${TRAVIS_BUILD_DIR}"
