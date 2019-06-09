@@ -1,6 +1,7 @@
 package main
 
 import (
+	"strings"
 	"fmt"
 	"log"
 	"math/rand"
@@ -219,7 +220,7 @@ func initWithWebhook(
 		log.Printf("Telegram callback failed: %s", info.LastErrorMessage)
 	}
 
-	updates := bot.ListenForWebhook("/" + bot.Token)
+	updates := bot.ListenForWebhook(webhookUrl[strings.LastIndex(webhookUrl, "/"):])
 
 	if certFile != "" && certKey != "" {
 		go http.ListenAndServeTLS(listenAddr, certFile, certKey, nil)

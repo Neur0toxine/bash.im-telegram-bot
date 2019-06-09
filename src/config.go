@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"os"
+	"fmt"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -14,7 +15,7 @@ const envToken = "TG_BOT_TOKEN"
 const envPollTimeout = "POLL_TIMEOUT"
 const envListen = "LISTEN_IP"
 const envWebhook = "WEBHOOK"
-const envWebhookPort = "WEBHOOK_PORT"
+const envWebhookPort = "PORT"
 const envCert = "CERT"
 const envKey = "CERT_KEY"
 const envDebug = "DEBUG"
@@ -90,7 +91,7 @@ func LoadConfig() (BotConfig, error) {
 		Debug:           debug,
 		PollingTimeout:  pollTimeout,
 		WebhookURL:      webhookLink,
-		ListenAddr:      listenAddr,
+		ListenAddr:      fmt.Sprintf("%s:%d", listenAddr, webhookPort),
 		CertificateFile: certFile,
 		CertificateKey:  certKey,
 	}
