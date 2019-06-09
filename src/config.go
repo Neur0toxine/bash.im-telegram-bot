@@ -46,11 +46,11 @@ func LoadConfig() (BotConfig, error) {
 		dir, err := filepath.Abs(filepath.Dir(os.Args[0]))
 
 		if err != nil {
-			log.Fatal(err)
+			log.Print(err)
 		}
 
 		if err := godotenv.Load(filepath.Join(filepath.Dir(dir), ".env")); err != nil {
-			return cfg, err
+			log.Print(err)
 		}
 	}
 

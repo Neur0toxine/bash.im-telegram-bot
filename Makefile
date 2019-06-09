@@ -9,7 +9,11 @@ BIN=$(PROJECT_DIR)/bin/bash_im_bot
 build: fmt deps
 	@echo "- Building"
 	@cd $(SRC) && $(GO) build -o $(BIN)
-	@echo Built "$(BIN)"
+	@echo - Built "$(BIN)"
+
+clean:
+	@echo Cleaning...
+	@rm -rf $(dir ${BIN})
 
 run:
 	@$(BIN)
