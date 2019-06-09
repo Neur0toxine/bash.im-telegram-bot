@@ -31,6 +31,10 @@ func GetLatestAbyssQuotes() ([]BashQuote, error) {
 	return extractQuotes("/abyss/", 25)
 }
 
+func GetRandomQuotes() ([]BashQuote, error) {
+	return extractQuotes("/random", 25)
+}
+
 func GetQuote(id int) (BashQuote, error) {
 	quotes, err := extractQuotes(fmt.Sprintf("/quote/%d", id), 1)
 

@@ -3,4 +3,5 @@ language: go
 go:
   - "1.12"
 script:
-  - "make"
+  - "make test"
+  - "make build"

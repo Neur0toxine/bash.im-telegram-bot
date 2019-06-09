@@ -115,6 +115,8 @@ func processUpdate(update tgbotapi.Update, bot *tgbotapi.BotAPI) {
 				NewMessageWithQuotes(bot, update, &msgs, "Получаю свежие цитаты", update.Message.Command())
 			case "abyss":
 				NewMessageWithQuotes(bot, update, &msgs, "Получаю цитаты из Бездны", update.Message.Command())
+			case "random":
+				NewMessageWithQuotes(bot, update, &msgs, "Получаю случайные цитаты", update.Message.Command())
 			default:
 				msgs[len(msgs)-1].Text = "Как насчёт последних цитат? Используйте /latest"
 			}
@@ -151,6 +153,8 @@ func NewMessageWithQuotes(
 		items, err = GetLatestQuotes()
 	case "abyss":
 		items, err = GetLatestAbyssQuotes()
+	case "random":
+		items, err = GetRandomQuotes()
 	default:
 		items, err = GetLatestQuotes()
 	}

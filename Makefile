@@ -15,6 +15,10 @@ clean:
 	@echo Cleaning...
 	@rm -rf $(dir ${BIN})
 
+test:
+	@echo Testing...
+	@$(GO) test $(SRC)
+
 run:
 	@$(BIN)
 
