@@ -5,6 +5,7 @@ PROJECT_DIR=$(shell pwd)
 GOPATH=$(PROJECT_DIR)
 SRC=$(PROJECT_DIR)/src
 BIN=$(PROJECT_DIR)/bin/bash_im_bot
+GO111MODULE=on
 
 build: fmt deps
 	@echo "- Building"

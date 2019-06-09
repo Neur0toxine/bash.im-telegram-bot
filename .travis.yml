@@ -1,12 +1,15 @@
+go_import_path: github.com/Neur0toxine/bash.im-telegram-bot
 dist: xenial
 language: go
-go_import_path: github.com/Neur0toxine/bash.im-telegram-bot
 cache:
   directories:
     - $HOME/.cache/go-build
-    - $HOME/gopath/pkg/mod
+    - $HOME/gopath/pkg
 go:
   - "1.12"
 script:
   - "make test"
   - "make build"
+env:
+  - GO111MODULE=on
+install: true
