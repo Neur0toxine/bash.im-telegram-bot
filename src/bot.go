@@ -1,12 +1,12 @@
 package main
 
 import (
-	"strings"
 	"fmt"
 	"log"
 	"math/rand"
 	"net/http"
 	"strconv"
+	"strings"
 	"unicode/utf16"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
@@ -32,13 +32,18 @@ func processUpdate(update tgbotapi.Update, bot *tgbotapi.BotAPI) {
 			bashQuotes = append(bashQuotes, quote)
 		} else {
 			log.Print(errConv)
-			bashQuotes, err = SearchQuotes(update.InlineQuery.Query, 3)
+			bashQuotes, err = SearchQuotes(update.InlineQuery.Query, maxSearchResults)
 		}
 
 		if err == nil {
 			for _, quote := range bashQuotes {
+				cutSize := 50
 				utfEncodedString := utf16.Encode([]rune(quote.Text))
-				runeString := utf16.Decode(utfEncodedString[:50])
+				runeString := utf16.Decode(utfEncodedString)
+
+				if len(utfEncodedString) > cutSize {
+					runeString = utf16.Decode(utfEncodedString[:cutSize])
+				}
 
 				title := fmt.Sprintf(
 					"[#%d]: %s\n",
@@ -107,34 +112,9 @@ func processUpdate(update tgbotapi.Update, bot *tgbotapi.BotAPI) {
 		if update.Message.IsCommand() {
 			switch update.Message.Command() {
 			case "latest":
-				SendMessages(bot, []tgbotapi.MessageConfig{
-					NewMessage(update.Message.Chat.ID, update.Message.MessageID, "_Получаю свежие цитаты..._", "markdown"),
-				})
-
-				items, err := GetLatestQuotes()
-
-				if err != nil {
-					msgs[len(msgs)-1].Text = "Не удалось получить последние цитаты :("
-				} else {
-					for _, item := range items {
-						text := fmt.Sprintf(
-							"*Цитата:* [#%d](%s), %s  \n"+
-								"*Рейтинг:* %s  \n"+
-								"%s    \n\n",
-							item.ID,
-							item.Permalink,
-							item.Created,
-							item.Rating,
-							item.Text,
-						)
-
-						if len(msgs[len(msgs)-1].Text+text) > 4096 {
-							msgs = append(msgs, NewMessage(update.Message.Chat.ID, 0, text, "markdown"))
-						} else {
-							msgs[len(msgs)-1].Text += text
-						}
-					}
-				}
+				NewMessageWithQuotes(bot, update, &msgs, "Получаю свежие цитаты", update.Message.Command())
+			case "abyss":
+				NewMessageWithQuotes(bot, update, &msgs, "Получаю цитаты из Бездны", update.Message.Command())
 			default:
 				msgs[len(msgs)-1].Text = "Как насчёт последних цитат? Используйте /latest"
 			}
@@ -142,10 +122,62 @@ func processUpdate(update tgbotapi.Update, bot *tgbotapi.BotAPI) {
 			text := fmt.Sprintf("Зайдите в любой чат, вызовите бота вот так:\n `@%s <id>`, где ID - "+
 				"это идентификатор цитаты на bash.im. И бот перешлёт её!\n"+
 				"Ещё вместо идентификатора можно указать текст, по которому бот попытается найти цитаты.", bot.Self.UserName)
+
 			msgs[len(msgs)-1] = NewMessage(update.Message.Chat.ID, update.Message.MessageID, text, "markdown")
 		}
 
 		SendMessages(bot, msgs)
+	}
+}
+
+func NewMessageWithQuotes(
+	bot *tgbotapi.BotAPI,
+	update tgbotapi.Update,
+	msgs *[]tgbotapi.MessageConfig,
+	waitMsg string,
+	command string,
+) {
+	var (
+		items []BashQuote
+		err   error
+	)
+
+	SendMessages(bot, []tgbotapi.MessageConfig{
+		NewMessage(update.Message.Chat.ID, update.Message.MessageID, fmt.Sprintf("_%s..._", waitMsg), "markdown"),
+	})
+
+	switch command {
+	case "latest":
+		items, err = GetLatestQuotes()
+	case "abyss":
+		items, err = GetLatestAbyssQuotes()
+	default:
+		items, err = GetLatestQuotes()
+	}
+
+	messages := *msgs
+
+	if err != nil {
+		messages[len(messages)-1].Text = "Не удалось получить цитаты :("
+	} else {
+		for _, item := range items {
+			text := fmt.Sprintf(
+				"*Цитата:* [#%d](%s), %s  \n"+
+					"*Рейтинг:* %s  \n"+
+					"%s    \n\n",
+				item.ID,
+				item.Permalink,
+				item.Created,
+				item.Rating,
+				item.Text,
+			)
+
+			if len(messages[len(messages)-1].Text+text) > 4096 {
+				messages = append(messages, NewMessage(update.Message.Chat.ID, 0, text, "markdown"))
+			} else {
+				messages[len(messages)-1].Text += text
+			}
+		}
 	}
 }
 

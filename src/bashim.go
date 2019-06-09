@@ -3,9 +3,8 @@ package main
 import (
 	"errors"
 	"fmt"
+	"github.com/gocolly/colly"
 	"html"
-	"io/ioutil"
-	"net/http"
 	"net/url"
 	"regexp"
 	"strconv"
@@ -22,69 +21,14 @@ type BashQuote struct {
 	Text      string
 }
 
-var (
-	replaceBrRe     = regexp.MustCompile(`(?im)\<[\s+]?br[\s+\/]{0,2}?\>`)
-	getQuotesListRe = regexp.MustCompile(`(?im)[.\s\w\W]+?\<article\sclass\="quote\"[.\s\w\W]+?<\/article\>`)
-	getQuoteDataRe  = regexp.MustCompile(`(?im)data\-quote\=\"(?P<id>\d+)\"[.\s\w\W]+?quote__header_permalink.+href\=\"(?P<permalink>\/.+\d)\"[.\s\w\W]+?quote__header_date\"\>[.\s\w\W]+?(?P<date>.+)[.\s\w\W]+?quote__body\"\>\s+?(?P<text>.+)[.\s\w\W]+?quote__total.+\>(?P<rating>\d+)`)
-)
-
-func getQuotesList(response string, maxItems int) []BashQuote {
-	var items []BashQuote
-	matches := getQuotesListRe.FindAllString(response, -1)
-
-	if maxItems != 0 && len(matches) > maxItems {
-		matches = matches[:maxItems]
-	}
-
-	for _, match := range matches {
-		id, created, rating, permalink, text, err := getQuoteData(match)
-
-		if err != nil {
-			continue
-		}
-
-		if id == 0 {
-			continue
-		}
-
-		items = append(items, BashQuote{
-			ID:        id,
-			Created:   created,
-			Rating:    rating,
-			Permalink: permalink,
-			Text:      text,
-		})
-	}
-
-	return items
-}
-
-func getQuoteData(response string) (id int, created string, rating string, permalink string, text string, err error) {
-	matches := getQuoteDataRe.FindStringSubmatch(response)
-
-	if len(matches) == 0 {
-		return 0, "", "", "", "", errors.New("No data found")
-	} else {
-		matches = matches[1:]
-	}
-
-	id, err = strconv.Atoi(matches[0])
-
-	if err != nil {
-		return 0, "", "", "", "", err
-	}
-
-	created = strings.ReplaceAll(strings.TrimSpace(matches[2]), "  ", " ")
-	rating = strings.TrimSpace(matches[4])
-	permalink = BASH_URL + matches[1]
-	text = html.UnescapeString(replaceBrRe.ReplaceAllString(strings.TrimSpace(matches[3]), "\n"))
-	err = nil
-
-	return
-}
+var replaceBrRe = regexp.MustCompile(`(?im)\<[\s+]?br[\s+\/]{0,2}?\>`)
 
 func GetLatestQuotes() ([]BashQuote, error) {
 	return extractQuotes("/", 25)
+}
+
+func GetLatestAbyssQuotes() ([]BashQuote, error) {
+	return extractQuotes("/abyss/", 25)
 }
 
 func GetQuote(id int) (BashQuote, error) {
@@ -104,27 +48,53 @@ func SearchQuotes(search string, maxResults int) ([]BashQuote, error) {
 }
 
 func extractQuotes(url string, maxItems int) ([]BashQuote, error) {
-	var (
-		quotes []BashQuote
-		link   = fmt.Sprintf("%s%s", BASH_URL, url)
-	)
+	var quotes []BashQuote
 
-	if resp, err := http.Get(link); err == nil {
-		defer resp.Body.Close()
+	c := colly.NewCollector()
 
-		if resp.StatusCode == 200 {
-			if bodyData, err := ioutil.ReadAll(resp.Body); err == nil {
-				body := string(bodyData)
-				items := getQuotesList(body, maxItems)
+	c.OnHTML("article.quote", func(e *colly.HTMLElement) {
+		if len(quotes) == maxItems {
+			return
+		}
 
-				return items, nil
-			} else {
-				return quotes, err
+		id, err := strconv.Atoi(strings.TrimSpace(e.Attr("data-quote")))
+
+		if err == nil {
+			created, err := e.DOM.Find(".quote__header_date").Html()
+			rating, err := e.DOM.Find(".quote__total").Html()
+			permalink, err := e.DOM.Find(".quote__header_permalink").Html()
+			text, err := e.DOM.Find(".quote__body").Html()
+
+			if err == nil {
+				created = strings.TrimSpace(strings.ReplaceAll(created, "  ", " "))
+				rating = strings.TrimSpace(rating)
+				text = replaceBrRe.ReplaceAllString(html.UnescapeString(strings.TrimSpace(text)), "\n")
+				text = strings.ReplaceAll(text, "`", "\\`")
+				text = strings.ReplaceAll(text, "*", "\\*")
+				text = strings.ReplaceAll(text, "_", "\\_")
+
+				if len(permalink) > 0 && permalink[0] != '#' {
+					permalink = fmt.Sprintf("%s%s", BASH_URL, strings.TrimSpace(permalink))
+				} else {
+					permalink = ""
+				}
+
+				quotes = append(quotes, BashQuote{
+					ID:        id,
+					Created:   created,
+					Rating:    rating,
+					Permalink: permalink,
+					Text:      text,
+				})
 			}
 		} else {
-			return quotes, errors.New("Incorrect status code: " + strconv.Itoa(resp.StatusCode))
+			return
 		}
-	} else {
+	})
+
+	if err := c.Visit(fmt.Sprintf("%s%s", BASH_URL, url)); err != nil {
 		return quotes, err
+	} else {
+		return quotes, nil
 	}
 }

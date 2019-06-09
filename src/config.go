@@ -1,9 +1,9 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"os"
-	"fmt"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -22,6 +22,7 @@ const envDebug = "DEBUG"
 
 const defaultPollTimeout = 30
 const defaultWebhookPort = 8000
+const maxSearchResults = 25
 
 const ModePolling = "polling"
 const ModeWebhook = "webhook"
